@@ -27,6 +27,7 @@ function initDatabase() {
       category_id INTEGER,
       name_ar TEXT,
       name_en TEXT,
+      price REAL DEFAULT 0,
       claimed BOOLEAN DEFAULT 0,
       claimed_by TEXT,
       FOREIGN KEY (category_id) REFERENCES categories(id)

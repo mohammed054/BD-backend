@@ -27,4 +27,28 @@ router.post('/', (req, res) => {
   );
 });
 
+router.delete('/:id', (req, res) => {
+  db.run('DELETE FROM guests WHERE id = ?', [req.params.id], function(err) {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    res.json({ message: 'Deleted' });
+  });
+});
+
+router.get('/:id/total', (req, res) => {
+  db.all(
+    'SELECT SUM(price) as total FROM items WHERE claimed = 1 AND claimed_by = ?',
+    [req.params.id],
+    (err, rows) => {
+      if (err) {
+        res.status(500).json({ error: err.message });
+        return;
+      }
+      res.json({ total: rows[0].total || 0 });
+    }
+  );
+});
+
 module.exports = router;
