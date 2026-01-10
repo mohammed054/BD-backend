@@ -5,10 +5,11 @@ Backend API for the Mohammed & Ahmad BD Camping/Party Organizer application.
 ## Features
 
 - RESTful API for categories, items, and guests
-- SQLite database with persistent storage
+- PostgreSQL database for reliable, persistent storage
 - CORS enabled for frontend integration (allows requests from GitHub Pages)
 - Health check endpoint
 - Auto-redeploy on git push
+- Transaction support for data consistency
 
 ## API Endpoints
 
@@ -51,11 +52,22 @@ Backend API for the Mohammed & Ahmad BD Camping/Party Organizer application.
 5. Click "Deploy Now"
 6. **Important**: Set Target Port to **3000** in Railway Networking settings
 
-Railway will automatically:
+ Railway will automatically:
 - Install dependencies
 - Start the server
 - Provide a public URL
 - Apply CORS configuration for cross-origin requests
+
+### Database Setup on Railway
+
+1. After deploying, go to your Railway project
+2. Click "New Service" → "Add PostgreSQL"
+3. Railway will create a PostgreSQL database
+4. Click the database service → "Variables" tab
+5. Copy the `DATABASE_URL` value
+6. Go to your backend service → "Variables" tab
+7. Add `DATABASE_URL` with the copied value
+8. Redeploy your backend service (click "Redeploy" button)
 
 ### Manual Deployment
 
@@ -73,11 +85,23 @@ railway up
 
 ## Environment Variables
 
-No environment variables required - all defaults work out of the box.
+Required:
+- `DATABASE_URL` - PostgreSQL connection string (provided by Railway)
+
+Optional:
+- `NODE_ENV` - Environment (development/production)
+- `PORT` - Server port (default: 3000)
+
+Example:
+```bash
+DATABASE_URL=postgresql://user:password@host:port/database
+NODE_ENV=production
+PORT=3000
+```
 
 ## Database
 
-Uses SQLite with file persistence. The database file (`database.sqlite`) is stored in the project directory and persists across deployments on Railway.
+Uses PostgreSQL for reliable, persistent storage. Database tables are automatically initialized on startup.
 
 ## Testing
 

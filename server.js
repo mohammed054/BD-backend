@@ -1,6 +1,6 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const bodyParser = require('body-parser');
 const categoriesRouter = require('./routes/categories');
 const itemsRouter = require('./routes/items');
 const guestsRouter = require('./routes/guests');
