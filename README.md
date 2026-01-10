@@ -6,8 +6,9 @@ Backend API for the Mohammed & Ahmad BD Camping/Party Organizer application.
 
 - RESTful API for categories, items, and guests
 - SQLite database with persistent storage
-- CORS enabled for frontend integration
+- CORS enabled for frontend integration (allows requests from GitHub Pages)
 - Health check endpoint
+- Auto-redeploy on git push
 
 ## API Endpoints
 
@@ -35,6 +36,12 @@ Backend API for the Mohammed & Ahmad BD Camping/Party Organizer application.
 
 ## Deployment to Railway
 
+### Current Deployment
+
+- **URL**: https://bd-backend.up.railway.app
+- **Status**: Live with CORS enabled
+- **Frontend**: Connects from https://mohammed054.github.io/BD/
+
 ### Automatic Deployment (Recommended)
 
 1. Push code to GitHub
@@ -42,11 +49,13 @@ Backend API for the Mohammed & Ahmad BD Camping/Party Organizer application.
 3. Click "New Project" → "Deploy from GitHub repo"
 4. Select this repository (BD-backend)
 5. Click "Deploy Now"
+6. **Important**: Set Target Port to **3000** in Railway Networking settings
 
 Railway will automatically:
 - Install dependencies
 - Start the server
 - Provide a public URL
+- Apply CORS configuration for cross-origin requests
 
 ### Manual Deployment
 
