@@ -20,6 +20,11 @@ app.use('/api/items', itemsRouter);
 app.use('/api/guests', guestsRouter);
 app.use('/api/import', importRouter);
 
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`);
+  next();
+});
+
 app.get('/', (req, res) => {
   res.json({ message: 'BD Backend API - Camping/Party Organizer' });
 });
@@ -37,7 +42,7 @@ app.options('*', (req, res) => {
 
 app.use((err, req, res, next) => {
   console.error('Server error:', err);
-  res.status(500).json({ error: err.message });
+  res.status(500).json({ error: err.message || 'Internal server error' });
 });
 
 app.listen(PORT, '0.0.0.0', () => {
