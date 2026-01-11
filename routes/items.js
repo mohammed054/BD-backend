@@ -3,61 +3,71 @@ const router = express.Router();
 const db = require('../database');
 
 router.get('/category/:categoryId', async (req, res) => {
-  try {
-    const result = await db.query(
-      'SELECT * FROM items WHERE category_id = $1',
-      [req.params.categoryId]
-    );
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  db.all(
+    'SELECT * FROM items WHERE category_id = ?',
+    [req.params.categoryId],
+    (err, rows) => {
+      if (err) {
+        res.status(500).json({ error: err.message });
+      } else {
+        res.json(rows);
+      }
+    }
+  );
 });
 
 router.post('/', async (req, res) => {
   const { category_id, name_ar, name_en, price } = req.body;
-  try {
-    const result = await db.query(
-      'INSERT INTO items (category_id, name_ar, name_en, price, claimed, claimed_by) VALUES ($1, $2, $3, $4, false, NULL) RETURNING *',
-      [category_id || null, name_ar, name_en, price || 0]
-    );
-    res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  db.run(
+    'INSERT INTO items (category_id, name_ar, name_en, price, claimed, claimed_by) VALUES (?, ?, ?, ?, 0, NULL)',
+    [category_id || null, name_ar, name_en, price || 0],
+    function(err) {
+      if (err) {
+        res.status(500).json({ error: err.message });
+      } else {
+        res.json({ id: this.lastID, category_id, name_ar, name_en, price: price || 0, claimed: 0, claimed_by: null });
+      }
+    }
+  );
 });
 
 router.get('/uncategorized', async (req, res) => {
-  try {
-    const result = await db.query(
-      'SELECT * FROM items WHERE category_id IS NULL ORDER BY id'
-    );
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  db.all(
+    'SELECT * FROM items WHERE category_id IS NULL ORDER BY id',
+    [],
+    (err, rows) => {
+      if (err) {
+        res.status(500).json({ error: err.message });
+      } else {
+        res.json(rows);
+      }
+    }
+  );
 });
 
 router.put('/:id/claim', async (req, res) => {
   const { claimed, claimed_by } = req.body;
-  try {
-    const result = await db.query(
-      'UPDATE items SET claimed = $1, claimed_by = $2 WHERE id = $3 RETURNING *',
-      [claimed, claimed_by || null, req.params.id]
-    );
-    res.json(result.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  db.run(
+    'UPDATE items SET claimed = ?, claimed_by = ? WHERE id = ?',
+    [claimed ? 1 : 0, claimed_by || null, req.params.id],
+    function(err) {
+      if (err) {
+        res.status(500).json({ error: err.message });
+      } else {
+        res.json({ id: req.params.id, claimed: claimed ? 1 : 0, claimed_by: claimed_by || null });
+      }
+    }
+  );
 });
 
 router.delete('/:id', async (req, res) => {
-  try {
-    await db.query('DELETE FROM items WHERE id = $1', [req.params.id]);
-    res.json({ message: 'Deleted' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  db.run('DELETE FROM items WHERE id = ?', [req.params.id], function(err) {
+    if (err) {
+      res.status(500).json({ error: err.message });
+    } else {
+      res.json({ message: 'Deleted' });
+    }
+  });
 });
 
 module.exports = router;

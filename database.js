@@ -1,65 +1,44 @@
-require('dotenv').config();
-const { Pool } = require('pg');
+const sqlite3 = require('sqlite3').verbose();
+const path = require('path');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
+const dbPath = path.join(__dirname, 'database.sqlite');
+const db = new sqlite3.Database(dbPath);
 
-async function initDatabase() {
-  try {
-    const client = await pool.connect();
-    try {
-      await client.query(`
-        CREATE TABLE IF NOT EXISTS categories (
-          id SERIAL PRIMARY KEY,
-          name_ar TEXT,
-          name_en TEXT,
-          icon TEXT,
-          order_index INTEGER DEFAULT 0
-        )
-      `);
+function initDatabase() {
+  db.serialize(() => {
+    db.run(`CREATE TABLE IF NOT EXISTS categories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name_ar TEXT,
+      name_en TEXT,
+      icon TEXT,
+      order_index INTEGER DEFAULT 0
+    )`);
 
-      await client.query(`
-        CREATE TABLE IF NOT EXISTS items (
-          id SERIAL PRIMARY KEY,
-          category_id INTEGER REFERENCES categories(id) ON DELETE CASCADE,
-          name_ar TEXT,
-          name_en TEXT,
-          price NUMERIC DEFAULT 0,
-          claimed BOOLEAN DEFAULT false,
-          claimed_by INTEGER,
-          CONSTRAINT items_check CHECK (category_id IS NOT NULL OR claimed = false)
-        )
-      `);
+    db.run(`CREATE TABLE IF NOT EXISTS items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      category_id INTEGER,
+      name_ar TEXT,
+      name_en TEXT,
+      price REAL DEFAULT 0,
+      claimed INTEGER DEFAULT 0,
+      claimed_by INTEGER,
+      FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+    )`);
 
-      await client.query(`
-        CREATE TABLE IF NOT EXISTS guests (
-          id SERIAL PRIMARY KEY,
-          name TEXT,
-          joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-
-      console.log('Database tables initialized');
-    } finally {
-      client.release();
-    }
-  } catch (err) {
-    console.error('Error initializing database:', err.message);
-    throw err;
-  }
+    db.run(`CREATE TABLE IF NOT EXISTS guests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT,
+      joined_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`, (err) => {
+      if (err) {
+        console.error('Error initializing database:', err.message);
+      } else {
+        console.log('Database tables initialized');
+      }
+    });
+  });
 }
 
-pool.on('connect', () => {
-  console.log('Connected to PostgreSQL database');
-});
+initDatabase();
 
-pool.on('error', (err) => {
-  console.error('Unexpected error on idle client', err);
-  process.exit(-1);
-});
-
-initDatabase().catch(console.error);
-
-module.exports = pool;
+module.exports = db;
