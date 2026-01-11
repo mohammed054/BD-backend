@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { query, insert, update, remove } = require('../database');
+const { query, get, insert, update, remove } = require('../database');
 
 router.get('/category/:categoryId', (req, res) => {
   try {
