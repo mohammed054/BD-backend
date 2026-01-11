@@ -14,7 +14,6 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.use(bodyParser.json());
 app.use(express.json());
 
 app.use('/api/categories', categoriesRouter);
