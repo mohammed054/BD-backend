@@ -33,6 +33,16 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+app.get('/api/db-test', async (req, res) => {
+  const { query } = require('./database');
+  try {
+    const result = await query('SELECT 1 as test');
+    res.json({ status: 'db-working', result });
+  } catch (err) {
+    res.status(500).json({ status: 'db-failed', error: err.message, stack: err.stack });
+  }
+});
+
 app.options('*', (req, res) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
