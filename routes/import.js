@@ -4,20 +4,22 @@ const { insert } = require('../database');
 
 router.post('/', (req, res) => {
   console.log('POST /api/import - Request body:', JSON.stringify(req.body, null, 2));
+  console.log('Request body type:', typeof req.body);
   
   const { categories, uncategorizedItems } = req.body;
   const results = { categoriesAdded: 0, itemsAdded: 0, errors: [] };
 
   try {
-    console.log('Processing import - categories:', categories ? 'yes' : 'no', 'uncategorizedItems:', uncategorizedItems ? 'yes' : 'no');
+    console.log('Processing import - categories:', typeof categories, 'isArray:', Array.isArray(categories), 'uncategorizedItems:', typeof uncategorizedItems);
     
     if (categories) {
-      console.log('Categories type:', typeof categories, 'isArray:', Array.isArray(categories));
+      console.log('Categories found, checking if array...');
       if (!Array.isArray(categories)) {
-        console.error('Categories is not an array!');
-        return res.status(400).json({ error: 'Categories must be an array' });
+        console.error('Categories is not an array! Type:', typeof categories, 'Value:', categories);
+        return res.status(400).json({ error: 'Categories must be an array', receivedType: typeof categories });
       }
 
+      console.log('Processing', categories.length, 'categories');
       for (const cat of categories) {
         try {
           console.log('Processing category:', cat);
@@ -30,7 +32,8 @@ router.post('/', (req, res) => {
           results.categoriesAdded++;
           console.log('Category added:', newCat);
 
-          if (Array.isArray(cat.items)) {
+          if (cat.items && Array.isArray(cat.items)) {
+            console.log('Processing', cat.items.length, 'items in category');
             for (const item of cat.items) {
               try {
                 insert('items', {
@@ -55,7 +58,8 @@ router.post('/', (req, res) => {
       }
     }
 
-    if (Array.isArray(uncategorizedItems)) {
+    if (uncategorizedItems && Array.isArray(uncategorizedItems)) {
+      console.log('Processing', uncategorizedItems.length, 'uncategorized items');
       for (const item of uncategorizedItems) {
         try {
           insert('items', {
