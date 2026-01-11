@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { query, run, get } = require('../database');
+const { query, get, insert, remove } = require('../database');
 
 router.get('/', (req, res) => {
   try {
-    const rows = query('SELECT * FROM guests ORDER BY joined_at DESC');
+    const rows = query('guests');
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -14,8 +14,11 @@ router.get('/', (req, res) => {
 router.post('/', (req, res) => {
   const { name } = req.body;
   try {
-    const result = run('INSERT INTO guests (name) VALUES (?)', [name]);
-    res.json({ id: result.id, name });
+    const result = insert('guests', {
+      name,
+      joined_at: new Date().toISOString()
+    });
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -23,7 +26,7 @@ router.post('/', (req, res) => {
 
 router.delete('/:id', (req, res) => {
   try {
-    run('DELETE FROM guests WHERE id = ?', [req.params.id]);
+    remove('guests', req.params.id);
     res.json({ message: 'Deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -32,11 +35,9 @@ router.delete('/:id', (req, res) => {
 
 router.get('/:id/total', (req, res) => {
   try {
-    const row = get(
-      'SELECT COALESCE(SUM(price), 0) as total FROM items WHERE claimed = 1 AND claimed_by = ?',
-      [req.params.id]
-    );
-    res.json({ total: row ? parseFloat(row.total) || 0 : 0 });
+    const items = query('items', r => r.claimed && r.claimed_by === parseInt(req.params.id));
+    const total = items.reduce((sum, item) => sum + (item.price || 0), 0);
+    res.json({ total });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

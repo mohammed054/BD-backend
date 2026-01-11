@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { query, run } = require('../database');
+const { query, insert, update, remove } = require('../database');
 
 router.get('/', (req, res) => {
   try {
-    const rows = query('SELECT * FROM categories ORDER BY order_index');
+    const rows = query('categories');
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -14,11 +14,13 @@ router.get('/', (req, res) => {
 router.post('/', (req, res) => {
   const { name_ar, name_en, icon, order_index } = req.body;
   try {
-    const result = run(
-      'INSERT INTO categories (name_ar, name_en, icon, order_index) VALUES (?, ?, ?, ?)',
-      [name_ar || '', name_en || '', icon || '', order_index || 0]
-    );
-    res.json({ id: result.id, name_ar, name_en, icon, order_index });
+    const result = insert('categories', {
+      name_ar: name_ar || '',
+      name_en: name_en || '',
+      icon: icon || '',
+      order_index: order_index || 0
+    });
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -27,11 +29,14 @@ router.post('/', (req, res) => {
 router.put('/:id', (req, res) => {
   const { name_ar, name_en, icon, order_index } = req.body;
   try {
-    run(
-      'UPDATE categories SET name_ar = ?, name_en = ?, icon = ?, order_index = ? WHERE id = ?',
-      [name_ar || '', name_en || '', icon || '', order_index || 0, req.params.id]
-    );
-    res.json({ id: req.params.id, name_ar, name_en, icon, order_index });
+    const result = update('categories', req.params.id, {
+      name_ar: name_ar || '',
+      name_en: name_en || '',
+      icon: icon || '',
+      order_index: order_index || 0
+    });
+    if (result) res.json(result);
+    else res.status(404).json({ error: 'Not found' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -39,8 +44,9 @@ router.put('/:id', (req, res) => {
 
 router.delete('/:id', (req, res) => {
   try {
-    run('DELETE FROM items WHERE category_id = ?', [req.params.id]);
-    run('DELETE FROM categories WHERE id = ?', [req.params.id]);
+    const items = query('items', r => r.category_id === parseInt(req.params.id));
+    items.forEach(item => remove('items', item.id));
+    remove('categories', req.params.id);
     res.json({ message: 'Deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });

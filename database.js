@@ -1,63 +1,85 @@
-const Database = require('better-sqlite3');
-const path = require('path');
 const fs = require('fs');
+const path = require('path');
 
-const dbDir = process.env.NODE_ENV === 'production' ? '/tmp' : __dirname;
-const dbPath = path.join(dbDir, 'database.sqlite');
+const dataDir = process.env.NODE_ENV === 'production' ? '/tmp' : __dirname;
+const dataPath = path.join(dataDir, 'database.json');
 
-try {
-  if (!fs.existsSync(dbDir)) {
-    fs.mkdirSync(dbDir, { recursive: true });
+let data = {
+  categories: [],
+  items: [],
+  guests: []
+};
+
+function loadData() {
+  try {
+    if (fs.existsSync(dataPath)) {
+      data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+    } else {
+      saveData();
+    }
+  } catch (err) {
+    console.error('Error loading data:', err.message);
+    saveData();
   }
-  
-  const db = new Database(dbPath);
-  console.log('Connected to SQLite database at:', dbPath);
-  
-  db.exec(`CREATE TABLE IF NOT EXISTS categories (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name_ar TEXT,
-    name_en TEXT,
-    icon TEXT,
-    order_index INTEGER DEFAULT 0
-  )`);
-
-  db.exec(`CREATE TABLE IF NOT EXISTS items (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    category_id INTEGER,
-    name_ar TEXT,
-    name_en TEXT,
-    price REAL DEFAULT 0,
-    claimed INTEGER DEFAULT 0,
-    claimed_by INTEGER,
-    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
-  )`);
-
-  db.exec(`CREATE TABLE IF NOT EXISTS guests (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT,
-    joined_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`);
-
-  console.log('Database tables initialized successfully');
-
-  function query(sql, params = []) {
-    const stmt = db.prepare(sql);
-    return stmt.all(params);
-  }
-
-  function get(sql, params = []) {
-    const stmt = db.prepare(sql);
-    return stmt.get(params);
-  }
-
-  function run(sql, params = []) {
-    const stmt = db.prepare(sql);
-    const info = stmt.run(params);
-    return { id: info.lastInsertRowid, changes: info.changes };
-  }
-
-  module.exports = { query, get, run };
-} catch (err) {
-  console.error('Database initialization error:', err);
-  throw err;
 }
+
+function saveData() {
+  try {
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+    fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));
+  } catch (err) {
+    console.error('Error saving data:', err.message);
+  }
+}
+
+loadData();
+console.log('Data storage initialized at:', dataPath);
+
+function query(table, where = null) {
+  if (table === 'categories') {
+    const rows = [...data.categories].sort((a, b) => a.order_index - b.order_index);
+    return where ? rows.filter(r => where(r)) : rows;
+  }
+  if (table === 'items') {
+    return where ? data.items.filter(r => where(r)) : [...data.items];
+  }
+  if (table === 'guests') {
+    return where ? data.guests.filter(r => where(r)) : [...data.guests].reverse();
+  }
+  return [];
+}
+
+function get(table, id) {
+  return data[table].find(r => r.id === parseInt(id));
+}
+
+function insert(table, row) {
+  const newRow = { id: Date.now(), ...row };
+  data[table].push(newRow);
+  saveData();
+  return newRow;
+}
+
+function update(table, id, updates) {
+  const idx = data[table].findIndex(r => r.id === parseInt(id));
+  if (idx >= 0) {
+    data[table][idx] = { ...data[table][idx], ...updates };
+    saveData();
+    return data[table][idx];
+  }
+  return null;
+}
+
+function remove(table, id) {
+  const idx = data[table].findIndex(r => r.id === parseInt(id));
+  if (idx >= 0) {
+    const row = data[table].splice(idx, 1)[0];
+    saveData();
+    return row;
+  }
+  return null;
+}
+
+module.exports = { query, get, insert, update, remove };
