@@ -17,6 +17,8 @@ router.post('/', (req, res) => {
     } else if (!Array.isArray(categories)) {
       console.error('Categories is not an array! Type:', typeof categories, 'Value:', categories);
       return res.status(400).json({ error: 'Categories must be an array', receivedType: typeof categories });
+    } else if (categories.length === 0) {
+      console.log('Categories array is empty, skipping...');
     } else {
       console.log('Processing', categories.length, 'categories');
       for (const cat of categories) {
@@ -62,6 +64,8 @@ router.post('/', (req, res) => {
     } else if (!Array.isArray(uncategorizedItems)) {
       console.error('uncategorizedItems is not an array! Type:', typeof uncategorizedItems);
       return res.status(400).json({ error: 'uncategorizedItems must be an array', receivedType: typeof uncategorizedItems });
+    } else if (uncategorizedItems.length === 0) {
+      console.log('uncategorizedItems array is empty, skipping...');
     } else {
       console.log('Processing', uncategorizedItems.length, 'uncategorized items');
       for (const item of uncategorizedItems) {
