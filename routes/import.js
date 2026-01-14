@@ -1,71 +1,84 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../database');
+const { insert } = require('../database');
 
-router.post('/', async (req, res) => {
+router.post('/', (req, res) => {
   const { categories, uncategorizedItems } = req.body;
   const results = { categoriesAdded: 0, itemsAdded: 0, errors: [] };
 
-  const client = await db.connect();
-  
+  console.log('Import received:', JSON.stringify(req.body).substring(0, 200));
+
   try {
-    await client.query('BEGIN');
-
-    if (categories) {
-      if (!Array.isArray(categories)) {
-        return res.status(400).json({ error: 'Categories must be an array' });
-      }
-
+    // Handle categories
+    if (Array.isArray(categories)) {
+      console.log('Processing categories:', categories.length);
       for (const cat of categories) {
         try {
-          const catResult = await client.query(
-            'INSERT INTO categories (name_ar, name_en, icon, order_index) VALUES ($1, $2, $3, $4) RETURNING id',
-            [cat.name_ar || '', cat.name_en || '', cat.icon || '', cat.order_index || 0]
-          );
+          console.log('Inserting category:', cat.name_en || cat.name_ar);
+          const newCat = insert('categories', {
+            name_ar: cat.name_ar || '',
+            name_en: cat.name_en || '',
+            icon: cat.icon || '',
+            order_index: cat.order_index || 0
+          });
           results.categoriesAdded++;
-          const categoryId = catResult.rows[0].id;
+          console.log('Category inserted, ID:', newCat.id);
 
           if (Array.isArray(cat.items)) {
+            console.log('Processing items:', cat.items.length);
             for (const item of cat.items) {
               try {
-                await client.query(
-                  'INSERT INTO items (category_id, name_ar, name_en, price) VALUES ($1, $2, $3, $4)',
-                  [categoryId, item.name_ar || '', item.name_en || '', item.price || 0]
-                );
+                console.log('Inserting item:', item.name_en || item.name_ar);
+                insert('items', {
+                  category_id: newCat.id,
+                  name_ar: item.name_ar || '',
+                  name_en: item.name_en || '',
+                  price: item.price || 0,
+                  claimed: false,
+                  claimed_by: null
+                });
                 results.itemsAdded++;
               } catch (err) {
-                results.errors.push(`Item in category ${cat.name_en}: ${err.message}`);
+                console.error('Item insert error:', err.message);
+                results.errors.push(`Item error: ${err.message}`);
               }
             }
           }
         } catch (err) {
-          results.errors.push(`Category ${cat.name_en}: ${err.message}`);
+          console.error('Category insert error:', err.message);
+          results.errors.push(`Category error: ${err.message}`);
         }
       }
+    } else {
+      console.log('Categories is not an array:', typeof categories);
     }
 
+    // Handle uncategorized items
     if (Array.isArray(uncategorizedItems)) {
+      console.log('Processing uncategorized items:', uncategorizedItems.length);
       for (const item of uncategorizedItems) {
         try {
-          await client.query(
-            'INSERT INTO items (category_id, name_ar, name_en, price, claimed, claimed_by) VALUES (NULL, $1, $2, $3, false, NULL)',
-            [item.name_ar || '', item.name_en || '', item.price || 0]
-          );
+          insert('items', {
+            category_id: null,
+            name_ar: item.name_ar || '',
+            name_en: item.name_en || '',
+            price: item.price || 0,
+            claimed: false,
+            claimed_by: null
+          });
           results.itemsAdded++;
         } catch (err) {
-          results.errors.push(`Uncategorized item: ${err.message}`);
+          console.error('Uncategorized item error:', err.message);
+          results.errors.push(`Uncategorized item error: ${err.message}`);
         }
       }
     }
 
-    await client.query('COMMIT');
+    console.log('Import complete:', results);
     res.json(results);
-
   } catch (err) {
-    await client.query('ROLLBACK');
+    console.error('Import error:', err.message);
     res.status(500).json({ error: err.message });
-  } finally {
-    client.release();
   }
 });
 

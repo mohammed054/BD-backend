@@ -1,49 +1,68 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../database');
+const { query, insert, update, remove } = require('../database');
 
-router.get('/', async (req, res) => {
+router.get('/', (req, res) => {
   try {
-    const result = await db.query('SELECT * FROM categories ORDER BY order_index');
-    res.json(result.rows);
+    console.log('GET /api/categories');
+    const rows = query('categories');
+    console.log('Categories found:', rows.length);
+    res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Error in GET /api/categories:', err);
+    res.status(500).json({ error: err.message || 'Unknown error' });
   }
 });
 
-router.post('/', async (req, res) => {
-  const { name_ar, name_en, icon, order_index } = req.body;
+router.post('/', (req, res) => {
   try {
-    const result = await db.query(
-      'INSERT INTO categories (name_ar, name_en, icon, order_index) VALUES ($1, $2, $3, $4) RETURNING *',
-      [name_ar, name_en, icon, order_index || 0]
-    );
-    res.json(result.rows[0]);
+    console.log('POST /api/categories:', req.body);
+    const { name_ar, name_en, icon, order_index } = req.body;
+    const result = insert('categories', {
+      name_ar: name_ar || '',
+      name_en: name_en || '',
+      icon: icon || '',
+      order_index: order_index || 0
+    });
+    console.log('Category added:', result);
+    res.json(result);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Error in POST /api/categories:', err);
+    res.status(500).json({ error: err.message || 'Unknown error' });
   }
 });
 
-router.put('/:id', async (req, res) => {
-  const { name_ar, name_en, icon, order_index } = req.body;
+router.put('/:id', (req, res) => {
   try {
-    const result = await db.query(
-      'UPDATE categories SET name_ar = $1, name_en = $2, icon = $3, order_index = $4 WHERE id = $5 RETURNING *',
-      [name_ar, name_en, icon, order_index, req.params.id]
-    );
-    res.json(result.rows[0]);
+    console.log('PUT /api/categories/' + req.params.id, req.body);
+    const { name_ar, name_en, icon, order_index } = req.body;
+    const result = update('categories', req.params.id, {
+      name_ar: name_ar || '',
+      name_en: name_en || '',
+      icon: icon || '',
+      order_index: order_index || 0
+    });
+    if (result) {
+      console.log('Category updated:', result);
+      res.json(result);
+    } else res.status(404).json({ error: 'Not found' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Error in PUT /api/categories:', err);
+    res.status(500).json({ error: err.message || 'Unknown error' });
   }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', (req, res) => {
   try {
-    await db.query('DELETE FROM items WHERE category_id = $1', [req.params.id]);
-    await db.query('DELETE FROM categories WHERE id = $1', [req.params.id]);
+    console.log('DELETE /api/categories/' + req.params.id);
+    const items = query('items', r => r.category_id === parseInt(req.params.id));
+    items.forEach(item => remove('items', item.id));
+    remove('categories', req.params.id);
+    console.log('Category deleted');
     res.json({ message: 'Deleted' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Error in DELETE /api/categories:', err);
+    res.status(500).json({ error: err.message || 'Unknown error' });
   }
 });
 
