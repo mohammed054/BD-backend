@@ -33,9 +33,9 @@ router.delete('/:id', (req, res) => {
   }
 });
 
-router.get('/:id/total', (req, res) => {
+router.get('/:name/total', (req, res) => {
   try {
-    const items = query('items', r => r.claimed && r.claimed_by === parseInt(req.params.id));
+    const items = query('items', r => r.claimed && r.claimed_by === req.params.name);
     const total = items.reduce((sum, item) => sum + (item.price || 0), 0);
     res.json({ total });
   } catch (err) {

@@ -42,7 +42,7 @@ router.put('/:id/claim', (req, res) => {
   try {
     const result = update('items', req.params.id, {
       claimed: !!claimed,
-      claimed_by: claimed && claimed_by ? parseInt(claimed_by) : null
+      claimed_by: claimed && claimed_by ? claimed_by : null
     });
     if (result) res.json(result);
     else res.status(404).json({ error: 'Not found' });
