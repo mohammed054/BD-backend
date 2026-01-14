@@ -1,11 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../database');
+
+const HARDCODED_GUESTS = [
+  { id: 1, name: 'Guest 1' },
+  { id: 2, name: 'Guest 2' },
+  { id: 3, name: 'Guest 3' }
+];
 
 router.get('/', async (req, res) => {
   try {
-    const result = await db.query('SELECT * FROM guests ORDER BY joined_at DESC');
-    res.json(result.rows);
+    res.json(HARDCODED_GUESTS);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
