@@ -42,6 +42,7 @@ loadData();
 console.log('Data storage initialized at:', dataPath);
 
 function query(table, where = null) {
+  console.log(`Querying ${table}${where ? ' with filter' : ''}`);
   if (table === 'categories') {
     const rows = [...data.categories].sort((a, b) => a.order_index - b.order_index);
     return where ? rows.filter(r => where(r)) : rows;
@@ -60,6 +61,7 @@ function get(table, id) {
 }
 
 function insert(table, row) {
+  console.log(`Inserting into ${table}:`, row);
   const newRow = { id: Date.now(), ...row };
   data[table].push(newRow);
   saveData();
