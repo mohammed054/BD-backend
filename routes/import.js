@@ -1,14 +1,23 @@
 const express = require('express');
 const router = express.Router();
-const { insert } = require('../database');
+const { query, insert } = require('../database');
 
 router.post('/', (req, res) => {
-  const { categories, uncategorizedItems } = req.body;
+  const { categories, uncategorizedItems, clearFirst } = req.body;
   const results = { categoriesAdded: 0, itemsAdded: 0, errors: [] };
 
   console.log('Import received:', JSON.stringify(req.body).substring(0, 200));
 
   try {
+    // Optionally clear existing data first
+    if (clearFirst) {
+      console.log('Clearing existing data...');
+      const db = require('../database');
+      db.data = { categories: [], items: [], guests: [] };
+      db.saveData();
+      console.log('Existing data cleared');
+    }
+
     // Handle categories
     if (Array.isArray(categories)) {
       console.log('Processing categories:', categories.length);
