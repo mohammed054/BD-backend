@@ -39,14 +39,21 @@ router.get('/uncategorized', (req, res) => {
 
 router.put('/:id/claim', (req, res) => {
   const { claimed, claimed_by } = req.body;
+  const itemId = req.params.id;
+  console.log(`Claim request: item ${itemId}, claimed: ${claimed}, by: ${claimed_by}`);
   try {
-    const result = update('items', req.params.id, {
+    const result = update('items', itemId, {
       claimed: !!claimed,
       claimed_by: claimed && claimed_by ? claimed_by : null
     });
+    console.log('Claim result:', result);
     if (result) res.json(result);
-    else res.status(404).json({ error: 'Not found' });
+    else {
+      console.log('Item not found:', itemId);
+      res.status(404).json({ error: 'Not found' });
+    }
   } catch (err) {
+    console.error('Claim error:', err);
     res.status(500).json({ error: err.message });
   }
 });
