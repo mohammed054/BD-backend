@@ -1,88 +1,86 @@
-const { Pool } = require('pg');
+const fs = require('fs');
+const path = require('path');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/bd_backend'
-});
+const dataPath = path.join(__dirname, 'database.json');
 
-async function initDB() {
-  const client = await pool.connect();
+let data = {
+  categories: [],
+  items: [],
+  guests: []
+};
+
+function loadData() {
   try {
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS categories (
-        id SERIAL PRIMARY KEY,
-        name_ar TEXT,
-        name_en TEXT,
-        icon TEXT,
-        order_index INTEGER DEFAULT 0
-      );
-      
-      CREATE TABLE IF NOT EXISTS items (
-        id SERIAL PRIMARY KEY,
-        category_id INTEGER,
-        name_ar TEXT,
-        name_en TEXT,
-        price DECIMAL(10, 2) DEFAULT 0,
-        claimed BOOLEAN DEFAULT false,
-        claimed_by TEXT
-      );
-      
-      CREATE TABLE IF NOT EXISTS guests (
-        id SERIAL PRIMARY KEY,
-        name TEXT UNIQUE,
-        joined_at TEXT
-      );
-    `);
-    console.log('Database tables initialized');
+    if (fs.existsSync(dataPath)) {
+      data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+      console.log('Data loaded:', { categories: data.categories.length, items: data.items.length, guests: data.guests.length });
+    } else {
+      console.log('No data file found, creating new one');
+      saveData();
+    }
   } catch (err) {
-    console.error('Error initializing DB:', err);
-  } finally {
-    client.release();
+    console.error('Error loading data:', err.message);
+    saveData();
   }
 }
 
-initDB();
+function saveData() {
+  try {
+    fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));
+    console.log('Data saved successfully');
+  } catch (err) {
+    console.error('Error saving data:', err.message, err.stack);
+  }
+}
+
+loadData();
+console.log('Data storage initialized at:', dataPath);
 
 function query(table, where = null) {
-  return pool.query(`SELECT * FROM ${table}`).then(res => {
-    let rows = res.rows;
-    if (where) rows = rows.filter(where);
-    return rows;
-  });
+  console.log(`Querying ${table}${where ? ' with filter' : ''}`);
+  if (table === 'categories') {
+    const rows = [...data.categories].sort((a, b) => a.order_index - b.order_index);
+    return where ? rows.filter(r => where(r)) : rows;
+  }
+  if (table === 'items') {
+    return where ? data.items.filter(r => where(r)) : [...data.items];
+  }
+  if (table === 'guests') {
+    return where ? data.guests.filter(r => where(r)) : [...data.guests].reverse();
+  }
+  return [];
 }
 
-async function get(table, id) {
-  const res = await pool.query(`SELECT * FROM ${table} WHERE id = $1`, [id]);
-  return res.rows[0];
+function get(table, id) {
+  return data[table].find(r => r.id === parseInt(id));
 }
 
-async function insert(table, row) {
-  const keys = Object.keys(row);
-  const values = Object.values(row);
-  const cols = keys.join(', ');
-  const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
-  
-  const res = await pool.query(
-    `INSERT INTO ${table} (${cols}) VALUES (${placeholders}) RETURNING *`,
-    values
-  );
-  return res.rows[0];
+function insert(table, row) {
+  console.log(`Inserting into ${table}:`, row);
+  const newRow = { id: Date.now(), ...row };
+  data[table].push(newRow);
+  saveData();
+  return newRow;
 }
 
-async function update(table, id, updates) {
-  const keys = Object.keys(updates);
-  const values = Object.values(updates);
-  const setClause = keys.map((key, i) => `${key} = $${i + 1}`).join(', ');
-  
-  const res = await pool.query(
-    `UPDATE ${table} SET ${setClause} WHERE id = $${keys.length + 1} RETURNING *`,
-    [...values, id]
-  );
-  return res.rows[0];
+function update(table, id, updates) {
+  const idx = data[table].findIndex(r => r.id === parseInt(id));
+  if (idx >= 0) {
+    data[table][idx] = { ...data[table][idx], ...updates };
+    saveData();
+    return data[table][idx];
+  }
+  return null;
 }
 
-async function remove(table, id) {
-  const res = await pool.query(`DELETE FROM ${table} WHERE id = $1 RETURNING *`, [id]);
-  return res.rows[0];
+function remove(table, id) {
+  const idx = data[table].findIndex(r => r.id === parseInt(id));
+  if (idx >= 0) {
+    const row = data[table].splice(idx, 1)[0];
+    saveData();
+    return row;
+  }
+  return null;
 }
 
-module.exports = { query, get, insert, update, remove, pool };
+module.exports = { query, get, insert, update, remove };
