@@ -39,14 +39,17 @@ router.get('/uncategorized', (req, res) => {
 
 router.put('/:id/claim', (req, res) => {
   const { claimed, claimed_by } = req.body;
+  console.log(`Claim request: item ${req.params.id}, claimed: ${claimed}, by: ${claimed_by}`);
   try {
     const result = update('items', req.params.id, {
       claimed: !!claimed,
       claimed_by: claimed && claimed_by ? claimed_by : null
     });
+    console.log('Claim result:', result);
     if (result) res.json(result);
     else res.status(404).json({ error: 'Not found' });
   } catch (err) {
+    console.error('Claim error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -81,30 +84,20 @@ router.delete('/:id', (req, res) => {
   }
 });
 
-router.put('/:id/price', async (req, res) => {
+router.put('/:id/price', (req, res) => {
   const { price } = req.body;
   try {
-    const result = await db.query(
-      'SELECT price FROM items WHERE id = $1',
-      [req.params.id]
-    );
-
-    if (result.rows.length === 0) {
+    const currentItem = get('items', req.params.id);
+    if (!currentItem) {
       return res.status(404).json({ error: 'Item not found' });
     }
 
-    const currentPrice = parseFloat(result.rows[0].price);
-
-    if (currentPrice > 0) {
+    if (parseFloat(currentItem.price) > 0) {
       return res.status(400).json({ error: 'Price cannot be changed once set' });
     }
 
-    const updateResult = await db.query(
-      'UPDATE items SET price = $1 WHERE id = $2 RETURNING *',
-      [price || 0, req.params.id]
-    );
-
-    res.json(updateResult.rows[0]);
+    const result = update('items', req.params.id, { price: price || 0 });
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -1,91 +1,88 @@
-const fs = require('fs');
-const path = require('path');
+const { Pool } = require('pg');
 
-const dataDir = process.env.NODE_ENV === 'production' ? '/tmp' : __dirname;
-const dataPath = path.join(dataDir, 'database.json');
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/bd_backend'
+});
 
-let data = {
-  categories: [],
-  items: [],
-  guests: []
-};
-
-function loadData() {
+async function initDB() {
+  const client = await pool.connect();
   try {
-    if (fs.existsSync(dataPath)) {
-      data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
-      console.log('Data loaded:', { categories: data.categories.length, items: data.items.length, guests: data.guests.length });
-    } else {
-      console.log('No data file found, creating new one');
-      saveData();
-    }
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS categories (
+        id SERIAL PRIMARY KEY,
+        name_ar TEXT,
+        name_en TEXT,
+        icon TEXT,
+        order_index INTEGER DEFAULT 0
+      );
+      
+      CREATE TABLE IF NOT EXISTS items (
+        id SERIAL PRIMARY KEY,
+        category_id INTEGER,
+        name_ar TEXT,
+        name_en TEXT,
+        price DECIMAL(10, 2) DEFAULT 0,
+        claimed BOOLEAN DEFAULT false,
+        claimed_by TEXT
+      );
+      
+      CREATE TABLE IF NOT EXISTS guests (
+        id SERIAL PRIMARY KEY,
+        name TEXT UNIQUE,
+        joined_at TEXT
+      );
+    `);
+    console.log('Database tables initialized');
   } catch (err) {
-    console.error('Error loading data:', err.message);
-    saveData();
+    console.error('Error initializing DB:', err);
+  } finally {
+    client.release();
   }
 }
 
-function saveData() {
-  try {
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
-      console.log('Created data directory:', dataDir);
-    }
-    fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));
-    console.log('Data saved successfully');
-  } catch (err) {
-    console.error('Error saving data:', err.message, err.stack);
-  }
-}
-
-loadData();
-console.log('Data storage initialized at:', dataPath);
+initDB();
 
 function query(table, where = null) {
-  console.log(`Querying ${table}${where ? ' with filter' : ''}`);
-  if (table === 'categories') {
-    const rows = [...data.categories].sort((a, b) => a.order_index - b.order_index);
-    return where ? rows.filter(r => where(r)) : rows;
-  }
-  if (table === 'items') {
-    return where ? data.items.filter(r => where(r)) : [...data.items];
-  }
-  if (table === 'guests') {
-    return where ? data.guests.filter(r => where(r)) : [...data.guests].reverse();
-  }
-  return [];
+  return pool.query(`SELECT * FROM ${table}`).then(res => {
+    let rows = res.rows;
+    if (where) rows = rows.filter(where);
+    return rows;
+  });
 }
 
-function get(table, id) {
-  return data[table].find(r => r.id === parseInt(id));
+async function get(table, id) {
+  const res = await pool.query(`SELECT * FROM ${table} WHERE id = $1`, [id]);
+  return res.rows[0];
 }
 
-function insert(table, row) {
-  console.log(`Inserting into ${table}:`, row);
-  const newRow = { id: Date.now(), ...row };
-  data[table].push(newRow);
-  saveData();
-  return newRow;
+async function insert(table, row) {
+  const keys = Object.keys(row);
+  const values = Object.values(row);
+  const cols = keys.join(', ');
+  const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
+  
+  const res = await pool.query(
+    `INSERT INTO ${table} (${cols}) VALUES (${placeholders}) RETURNING *`,
+    values
+  );
+  return res.rows[0];
 }
 
-function update(table, id, updates) {
-  const idx = data[table].findIndex(r => r.id === parseInt(id));
-  if (idx >= 0) {
-    data[table][idx] = { ...data[table][idx], ...updates };
-    saveData();
-    return data[table][idx];
-  }
-  return null;
+async function update(table, id, updates) {
+  const keys = Object.keys(updates);
+  const values = Object.values(updates);
+  const setClause = keys.map((key, i) => `${key} = $${i + 1}`).join(', ');
+  
+  const res = await pool.query(
+    `UPDATE ${table} SET ${setClause} WHERE id = $${keys.length + 1} RETURNING *`,
+    [...values, id]
+  );
+  return res.rows[0];
 }
 
-function remove(table, id) {
-  const idx = data[table].findIndex(r => r.id === parseInt(id));
-  if (idx >= 0) {
-    const row = data[table].splice(idx, 1)[0];
-    saveData();
-    return row;
-  }
-  return null;
+async function remove(table, id) {
+  const res = await pool.query(`DELETE FROM ${table} WHERE id = $1 RETURNING *`, [id]);
+  return res.rows[0];
 }
 
-module.exports = { query, get, insert, update, remove };
+module.exports = { query, get, insert, update, remove, pool };
