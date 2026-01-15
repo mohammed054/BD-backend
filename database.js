@@ -69,16 +69,12 @@ function insert(table, row) {
 }
 
 function update(table, id, updates) {
-  console.log(`[DB] Update called: table=${table}, id=${id}, updates=`, updates);
   const idx = data[table].findIndex(r => r.id === parseInt(id));
-  console.log(`[DB] Found index: ${idx}, total items: ${data[table].length}`);
   if (idx >= 0) {
     data[table][idx] = { ...data[table][idx], ...updates };
-    console.log(`[DB] Updated item:`, data[table][idx]);
     saveData();
     return data[table][idx];
   }
-  console.log(`[DB] Item not found with id=${id}`);
   return null;
 }
 
