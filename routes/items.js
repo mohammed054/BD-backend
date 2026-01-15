@@ -81,20 +81,30 @@ router.delete('/:id', (req, res) => {
   }
 });
 
-router.put('/:id/price', (req, res) => {
+router.put('/:id/price', async (req, res) => {
   const { price } = req.body;
   try {
-    const currentItem = get('items', req.params.id);
-    if (!currentItem) {
+    const result = await db.query(
+      'SELECT price FROM items WHERE id = $1',
+      [req.params.id]
+    );
+
+    if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Item not found' });
     }
 
-    if (parseFloat(currentItem.price) > 0) {
+    const currentPrice = parseFloat(result.rows[0].price);
+
+    if (currentPrice > 0) {
       return res.status(400).json({ error: 'Price cannot be changed once set' });
     }
 
-    const result = update('items', req.params.id, { price: price || 0 });
-    res.json(result);
+    const updateResult = await db.query(
+      'UPDATE items SET price = $1 WHERE id = $2 RETURNING *',
+      [price || 0, req.params.id]
+    );
+
+    res.json(updateResult.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -1,7 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 
-const dataPath = path.join(__dirname, 'database.json');
+const dataDir = process.env.NODE_ENV === 'production' ? '/tmp' : __dirname;
+const dataPath = path.join(dataDir, 'database.json');
 
 let data = {
   categories: [],
@@ -26,6 +27,10 @@ function loadData() {
 
 function saveData() {
   try {
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+      console.log('Created data directory:', dataDir);
+    }
     fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));
     console.log('Data saved successfully');
   } catch (err) {
@@ -37,7 +42,6 @@ loadData();
 console.log('Data storage initialized at:', dataPath);
 
 function query(table, where = null) {
-  console.log(`Querying ${table}${where ? ' with filter' : ''}`);
   if (table === 'categories') {
     const rows = [...data.categories].sort((a, b) => a.order_index - b.order_index);
     return where ? rows.filter(r => where(r)) : rows;
@@ -56,7 +60,6 @@ function get(table, id) {
 }
 
 function insert(table, row) {
-  console.log(`Inserting into ${table}:`, row);
   const newRow = { id: Date.now(), ...row };
   data[table].push(newRow);
   saveData();
