@@ -1,24 +1,11 @@
 const express = require('express');
 const router = express.Router();
-<<<<<<< HEAD
-
-const HARDCODED_GUESTS = [
-  { id: 1, name: 'Guest 1' },
-  { id: 2, name: 'Guest 2' },
-  { id: 3, name: 'Guest 3' }
-];
-=======
 const { query, get, insert, remove } = require('../database');
->>>>>>> bb37438b7eb09788cbec8d0734b48112188083c4
 
 router.get('/', (req, res) => {
   try {
-<<<<<<< HEAD
-    res.json(HARDCODED_GUESTS);
-=======
     const rows = query('guests');
     res.json(rows);
->>>>>>> bb37438b7eb09788cbec8d0734b48112188083c4
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
