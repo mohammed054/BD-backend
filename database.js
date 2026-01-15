@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const dataDir = process.env.NODE_ENV === 'production' ? '/tmp' : __dirname;
+const dataDir = process.env.RAILWAY_VOLUME_MOUNT_PATH || process.env.DATA_DIR || (process.env.NODE_ENV === 'production' ? '/tmp' : __dirname);
 const dataPath = path.join(dataDir, 'database.json');
 
 let data = {
@@ -10,11 +10,17 @@ let data = {
   guests: []
 };
 
+let itemIdCounter = 1000;
+
 function loadData() {
   try {
     if (fs.existsSync(dataPath)) {
       data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
       console.log('Data loaded:', { categories: data.categories.length, items: data.items.length, guests: data.guests.length });
+      
+      const maxItemId = data.items.reduce((max, item) => Math.max(max, item.id || 0), 0);
+      itemIdCounter = Math.max(maxItemId + 1, 1000);
+      console.log('Item ID counter initialized to:', itemIdCounter);
     } else {
       console.log('No data file found, creating new one');
       saveData();
@@ -44,7 +50,6 @@ loadData();
 console.log('Data storage initialized at:', dataPath);
 
 function query(table, where = null) {
-  console.log(`Querying ${table}${where ? ' with filter' : ''}`);
   if (table === 'categories') {
     const rows = [...data.categories].sort((a, b) => a.order_index - b.order_index);
     return where ? rows.filter(r => where(r)) : rows;
@@ -63,8 +68,7 @@ function get(table, id) {
 }
 
 function insert(table, row) {
-  console.log(`Inserting into ${table}:`, row);
-  const newRow = { id: Date.now(), ...row };
+  const newRow = { id: itemIdCounter++, ...row };
   data[table].push(newRow);
   saveData();
   return newRow;
@@ -77,6 +81,7 @@ function update(table, id, updates) {
     saveData();
     return data[table][idx];
   }
+  console.log(`[DB] Item not found with id=${id} in table ${table}`);
   return null;
 }
 
@@ -91,3 +96,4 @@ function remove(table, id) {
 }
 
 module.exports = { query, get, insert, update, remove };
+
