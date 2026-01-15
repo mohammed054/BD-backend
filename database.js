@@ -31,8 +31,10 @@ function saveData() {
       fs.mkdirSync(dataDir, { recursive: true });
       console.log('Created data directory:', dataDir);
     }
-    fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));
+    const jsonData = JSON.stringify(data, null, 2);
+    fs.writeFileSync(dataPath, jsonData);
     console.log('Data saved successfully');
+    console.log('Current items count:', data.items.length);
   } catch (err) {
     console.error('Error saving data:', err.message, err.stack);
   }
