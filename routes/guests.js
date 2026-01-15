@@ -48,9 +48,9 @@ router.delete('/:id', (req, res) => {
 
 router.get('/:name/total', (req, res) => {
   try {
-    const allClaimedItems = query('items', r => r.claimed);
-    const grandTotal = allClaimedItems.reduce((sum, item) => sum + (item.price || 0), 0);
-    const numGuests = 7;
+    const allItems = query('items');
+    const grandTotal = allItems.reduce((sum, item) => sum + (item.price || 0), 0);
+    const numGuests = query('guests').length || 1;
     const splitTotal = grandTotal / numGuests;
     res.json({ total: splitTotal });
   } catch (err) {
