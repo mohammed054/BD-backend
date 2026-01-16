@@ -80,7 +80,7 @@ router.get('/split-total', (req, res) => {
   try {
     const items = query('items');
     const totalAmount = items.reduce((sum, item) => sum + (item.price || 0), 0);
-    const splitTotal = totalAmount / 7;
+    const splitTotal = totalAmount / 9;
     res.json({ splitTotal });
   } catch (err) {
     res.status(500).json({ error: err.message });
