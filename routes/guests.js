@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { query, get, insert, remove } = require('../database');
+const { query, get, insert, update, remove } = require('../database');
 
 router.get('/', (req, res) => {
   try {
@@ -76,12 +76,24 @@ router.post('/claim-all', (req, res) => {
   }
 });
 
+router.put('/:id/split-inclusion', (req, res) => {
+  const { included_in_split } = req.body;
+  try {
+    const result = update('guests', req.params.id, { included_in_split: !!included_in_split });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get('/split-total', (req, res) => {
   try {
     const items = query('items');
     const totalAmount = items.reduce((sum, item) => sum + (item.price || 0), 0);
-    const splitTotal = totalAmount / 9;
-    res.json({ splitTotal });
+    const guests = query('guests');
+    const activeGuestCount = guests.filter(g => g.included_in_split !== false).length || 9;
+    const splitTotal = totalAmount / activeGuestCount;
+    res.json({ splitTotal, activeGuestCount });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
